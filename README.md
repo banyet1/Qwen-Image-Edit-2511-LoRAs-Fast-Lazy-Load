@@ -72,7 +72,7 @@
 
 ### **Running with uv (Recommended)**
 
-[`uv`](https://github.com/astral-sh/uv) is a fast Python package manager that provides fully reproducible installs via a lock file. It is the recommended way to run Harm Bench.
+[`uv`](https://github.com/astral-sh/uv) is a fast Python package manager that provides fully reproducible installs via a lock file.
 
 **Step 1 — Install uv**
 ```bash
