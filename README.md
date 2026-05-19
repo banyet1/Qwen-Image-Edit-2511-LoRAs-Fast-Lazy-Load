@@ -2,7 +2,7 @@
 
 > A Gradio-based demonstration for the Qwen/Qwen-Image-Edit-2511 model with lazy-loaded LoRA adapters for advanced single- and multi-image editing. Supports 7+ specialized LoRAs including photo-to-anime, multi-angle camera control, pose transfer (Any-Pose), upscaling, style transfer, light migration, and manga tone. Features fast inference (4 steps default) with Flash Attention 3 and dynamic adapter loading to optimize memory.
 
-<img width="1920" height="1684" alt="Screenshot 2026-05-19 at 23-59-02 Qwen-Image-Edit-2511-LoRAs-Fast - a Hugging Face Space by prithivMLmods" src="https://github.com/user-attachments/assets/4f871f71-bca2-4e67-b06a-f43bebc0a799" />
+<img width="1920" height="1684" alt="image" src="https://github.com/user-attachments/assets/5a38b47d-8479-4602-ab7f-7a4d2479e503" />
 
 ## Features
 
