@@ -155,7 +155,7 @@ LOADED_ADAPTERS: set = set()
 ADAPTER_NAMES = list(ADAPTER_SPECS.keys())
 
 EXAMPLES_CONFIG = [
-    {"images": ["examples/xy8.jpg"],                        "prompt": "Transform into anime.",                                                                                           "lora": "XY"},
+    {"images": ["examples/xy8.jpg"],                        "prompt": "Use these concepts in your prompts to activate specific capabilities:\nnsfw nipples vagina penis missionary cowgirlout reversecowgirlpov blowjob cum_on_face creamp1e l1ck",                                                                                           "lora": "XY"},
     {"images": ["examples/HRP.jpg"],                        "prompt": "Transform into a hyper-realistic face portrait.",                                                                 "lora": "Hyper-Realistic-Portrait"},
     {"images": ["examples/A.jpeg"],                         "prompt": "Rotate the camera 45 degrees to the right.",                                                                      "lora": "Multiple-Angles"},
     {"images": ["examples/U.jpg"],                          "prompt": "Upscale this picture to 4K resolution.",                                                                          "lora": "Upscaler"},
