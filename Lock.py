@@ -69,12 +69,12 @@ ADAPTER_SPECS = {
     },
     "CNFemale": {
         "repo": "https://ai.x39.org/lora/cnfemale20.safetensors",
-        "weights": "LORA_DIR",
+        "weights": LORA_DIR,
         "adapter_name": "CNFemale",
     },
     "CNPussy": {
         "repo": "https://ai.x39.org/lora/cnfemalebodyfix.safetensors",
-        "weights": "LORA_DIR",
+        "weights": LORA_DIR,
         "adapter_name": "CNPussy",
     },
     "banyetman": {
