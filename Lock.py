@@ -67,10 +67,15 @@ ADAPTER_SPECS = {
         "weights": "qwen-image-edit-plus-nsfw-lora.safetensors",
         "adapter_name": "XY",
     },
-    "DOG": {
-        "repo": "Baraje/SexGod_NSFW_Female_Nudes_QWEN_Image_Edit_2511",
-        "weights": "SEXGOD_FemaleNudity_QwenEdit_2511_v2.safetensors",
-        "adapter_name": "DOG",
+    "CNFemale": {
+        "repo": "https://ai.x39.org/lora/cnfemale20.safetensors",
+        "weights": "LORA_DIR",
+        "adapter_name": "CNFemale",
+    },
+    "CNPussy": {
+        "repo": "https://ai.x39.org/lora/cnfemalebodyfix.safetensors",
+        "weights": "LORA_DIR",
+        "adapter_name": "CNPussy",
     },
     "banyetman": {
         "url": "https://ai.x39.org/banyetman/banyetman.safetensors",
@@ -202,7 +207,9 @@ def ensure_adapter_source(spec):
     return target_dir, target_name
 
 EXAMPLES_CONFIG = [
-    {"images": ["examples/xy8.jpg"],                        "prompt": "Use these concepts in your prompts to activate specific capabilities:\nnsfw nipples vagina penis missionary cowgirlout reversecowgirlpov blowjob cum_on_face creamp1e l1ck",                                                                                           "lora": "XY"},{"images": ["examples/dog.jpg"],                        "prompt": "You should use LoRA/Nude/Sex to trigger the image generation.",                                                                                           "lora": "DOG"},
+    {"images": ["examples/xy8.jpg"],                        "prompt": "Use these concepts in your prompts to activate specific capabilities:\nnsfw nipples vagina penis missionary cowgirlout reversecowgirlpov blowjob cum_on_face creamp1e l1ck",                                                                                           "lora": "XY"},
+    {"images": ["examples/dog.jpg"],                        "prompt": "zl_cn_female_body_v1,cn_female_body_fix_v1,A 20-years-old Chinese girl,standing, big breasts,short hair, background is a rural  town",                                                                                           "lora": "CNFemale"},
+    {"images": ["examples/pussy.jpg"],                        "prompt": "cn_female_body_fix_v1, 跪着, 她自己用手分pussy, expose her pussy,asshole, close-up",                                                                                           "lora": "CNPussy"},
     {"images": ["examples/ban.jpg"],                        "prompt": "replace the woman with photo of LL9_BANYET_01, middle-aged Asian man, keep the pose, clothing and background unchanged.",                                                                                           "lora": "banyetman"},
     {"images": ["examples/ban.jpg"],                        "prompt": "replace the man wearing CB_BANYETCHLBLT_01 underwear, nude,keep the pose, clothing and background unchanged.",                                                                                           "lora": "lock"},
     {"images": ["examples/asiawomen.jpg"],                        "prompt": "the woman doing LL9_BANYET_02 beer bottle insert to her vaginal, nude, keep the pose, clothing and background unchanged.",                                                                                           "lora": "beer"},    
