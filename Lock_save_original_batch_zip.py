@@ -357,6 +357,13 @@ def update_dimensions_on_upload(image):
     return (nw // 8) * 8, (nh // 8) * 8
 
 
+def get_dimensions_from_preset(image, resolution_preset):
+    preset = (resolution_preset or "Auto").strip()
+    if preset == "iPhone 15 Pro Portrait":
+        return 944, 2048
+    return update_dimensions_on_upload(image)
+
+
 def get_next_prompt_path():
     max_index = 0
     try:
@@ -375,6 +382,7 @@ def infer(
     images_b64_json,
     prompt,
     lora_adapter,
+    resolution_preset,
     seed,
     randomize_seed,
     guidance_scale,
@@ -431,7 +439,7 @@ def infer(
         "worst quality, low quality, bad anatomy, bad hands, text, error, missing fingers, "
         "extra digit, fewer digits, cropped, jpeg artifacts, signature, watermark, username, blurry"
     )
-    width, height = update_dimensions_on_upload(pil_images[0])
+    width, height = get_dimensions_from_preset(pil_images[0], resolution_preset)
 
     try:
         from datetime import datetime
@@ -1679,19 +1687,29 @@ function watchOutputs(attempt = 0) {
 
     function syncImage() {
         const resultImg = resultContainer.querySelector('img');
+        const pathEl = pathContainer ? (pathContainer.querySelector('textarea') || pathContainer.querySelector('input')) : null;
+        const savedPath = pathEl ? pathEl.value.trim() : '';
+
+        let previewSrc = '';
         if (resultImg && resultImg.src) {
-            if (outPh) outPh.style.display = 'none';
-            let existing = outBody.querySelector('img.modern-out-img');
-            if (!existing) {
-                existing = document.createElement('img');
-                existing.className = 'modern-out-img';
-                outBody.appendChild(existing);
-            }
-            if (existing.src !== resultImg.src) {
-                existing.src = resultImg.src;
-                syncDownloadButtons();
-                if (window.__hideLoader) window.__hideLoader();
-            }
+            previewSrc = resultImg.src;
+        } else if (savedPath) {
+            previewSrc = `/gradio_api/file=${encodeURIComponent(savedPath)}`;
+        }
+
+        if (!previewSrc) return;
+
+        if (outPh) outPh.style.display = 'none';
+        let existing = outBody.querySelector('img.modern-out-img');
+        if (!existing) {
+            existing = document.createElement('img');
+            existing.className = 'modern-out-img';
+            outBody.appendChild(existing);
+        }
+        if (existing.src !== previewSrc) {
+            existing.src = previewSrc;
+            syncDownloadButtons();
+            if (window.__hideLoader) window.__hideLoader();
         }
     }
     const observer = new MutationObserver(syncImage);
@@ -1798,6 +1816,7 @@ with gr.Blocks() as demo:
     hidden_images_b64 = gr.Textbox(value="[]",  elem_id="hidden-images-b64",   elem_classes="hidden-input", container=False)
     prompt            = gr.Textbox(value="",    elem_id="prompt-gradio-input",  elem_classes="hidden-input", container=False)
     lora_adapter      = gr.Dropdown(choices=ADAPTER_NAMES, value="XY", elem_id="gradio-lora", elem_classes="hidden-input", container=False)
+    resolution_preset = gr.Textbox(value="Auto", elem_id="gradio-resolution-preset", elem_classes="hidden-input", container=False)
     seed              = gr.Slider(minimum=0, maximum=MAX_SEED, step=1, value=0, elem_id="gradio-seed",       elem_classes="hidden-input", container=False)
     randomize_seed    = gr.Checkbox(value=True, elem_id="gradio-randomize",     elem_classes="hidden-input", container=False)
     guidance_scale    = gr.Slider(minimum=1.0, maximum=10.0, step=0.1, value=1.0, elem_id="gradio-guidance", elem_classes="hidden-input", container=False)
@@ -1866,6 +1885,11 @@ with gr.Blocks() as demo:
           <div class="settings-group">
             <div class="settings-group-title">Advanced Settings</div>
             <div class="settings-group-body">
+              <label class="modern-label" for="custom-resolution-preset" style="margin-bottom:8px;">Resolution</label>
+              <select id="custom-resolution-preset" class="lora-native-select" style="margin-bottom:14px;">
+                <option value="Auto" selected>Auto</option>
+                <option value="iPhone 15 Pro Portrait">iPhone 15 Pro Portrait</option>
+              </select>
               <div class="slider-row">
                 <label>Seed</label>
                 <input type="range" id="custom-seed" min="0" max="2147483647" step="1" value="0">
@@ -1962,19 +1986,21 @@ with gr.Blocks() as demo:
 
     run_btn.click(
         fn=infer,
-        inputs=[hidden_images_b64, prompt, lora_adapter, seed, randomize_seed, guidance_scale, steps, batch_count],
+        inputs=[hidden_images_b64, prompt, lora_adapter, resolution_preset, seed, randomize_seed, guidance_scale, steps, batch_count],
         outputs=[result, seed, result_path, batch_zip_path, progress_status],
-        js=r"""(imgs, p, la, s, rs, gs, st, bc) => {
+        js=r"""(imgs, p, la, rp, s, rs, gs, st, bc) => {
             const images    = window.__uploadedImages || [];
             const b64Array  = images.map(img => img.b64);
             const imgsJson  = JSON.stringify(b64Array);
             const promptEl  = document.getElementById('custom-prompt-input');
             const loraEl    = document.getElementById('custom-lora-select');
+            const presetEl  = document.getElementById('custom-resolution-preset');
             const batchEl   = document.getElementById('custom-batch');
             const promptVal = promptEl ? promptEl.value : p;
             const loraVal   = loraEl   ? loraEl.value   : la;
+            const presetVal = presetEl ? presetEl.value : rp;
             const batchVal  = batchEl ? parseInt(batchEl.value || '1', 10) : bc;
-            return [imgsJson, promptVal, loraVal, s, rs, gs, st, batchVal];
+            return [imgsJson, promptVal, loraVal, presetVal, s, rs, gs, st, batchVal];
         }""",
     )
 
