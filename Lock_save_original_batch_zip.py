@@ -17,9 +17,11 @@ MAX_SEED = np.iinfo(np.int32).max
 LANCZOS = getattr(Image, "Resampling", Image).LANCZOS
 OUTPUT_DIR = "/content/qwen_batch_outputs"
 LORA_DIR = "/content/qwen_loras"
+PROMPT_SAVE_DIR = "/content/input"
 MAX_OUTPUT_SIDE = 2048
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(LORA_DIR, exist_ok=True)
+os.makedirs(PROMPT_SAVE_DIR, exist_ok=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -355,6 +357,19 @@ def update_dimensions_on_upload(image):
     return (nw // 8) * 8, (nh // 8) * 8
 
 
+def get_next_prompt_path():
+    max_index = 0
+    try:
+        for name in os.listdir(PROMPT_SAVE_DIR):
+            if len(name) == 9 and name.startswith("p") and name.endswith(".txt"):
+                num = name[1:5]
+                if num.isdigit():
+                    max_index = max(max_index, int(num))
+    except FileNotFoundError:
+        os.makedirs(PROMPT_SAVE_DIR, exist_ok=True)
+    return os.path.join(PROMPT_SAVE_DIR, f"p{max_index + 1:04d}.txt")
+
+
 @spaces.GPU(size="xlarge")
 def infer(
     images_b64_json,
@@ -376,6 +391,12 @@ def infer(
         raise gr.Error("Please upload at least one image to edit.")
     if not prompt or prompt.strip() == "":
         raise gr.Error("Please enter an edit prompt.")
+    prompt = prompt.strip()
+
+    prompt_save_path = get_next_prompt_path()
+    with open(prompt_save_path, "w", encoding="utf-8") as f:
+        f.write(prompt)
+    print("Saved prompt to:", prompt_save_path)
 
     spec = ADAPTER_SPECS.get(lora_adapter)
     if not spec:
@@ -1061,6 +1082,7 @@ function init(attempt = 0) {
         return;
     }
     window.__qwenInitDone = true;
+    const STATE_STORAGE_KEY = 'qwen_edit_ui_state_v1';
 
     let images = [];
     window.__uploadedImages = images;
@@ -1185,14 +1207,97 @@ function init(attempt = 0) {
     }
     window.__setGradioValue = setGradioValue;
 
+    function readUiState() {
+        try {
+            const raw = localStorage.getItem(STATE_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            console.warn('Failed to read UI state:', e);
+            return null;
+        }
+    }
+
+    function saveUiState() {
+        try {
+            const seedEl = document.getElementById('custom-seed');
+            const stepsEl = document.getElementById('custom-steps');
+            const batchEl = document.getElementById('custom-batch');
+            const state = {
+                images,
+                prompt: promptInput ? promptInput.value : '',
+                lora: loraSelect ? loraSelect.value : '',
+                seed: seedEl ? seedEl.value : '0',
+                steps: stepsEl ? stepsEl.value : '4',
+                batch: batchEl ? batchEl.value : '1',
+            };
+            localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
+        } catch (e) {
+            console.warn('Failed to save UI state:', e);
+        }
+    }
+
+    function restoreUiState() {
+        const state = readUiState();
+        if (!state) return;
+
+        if (Array.isArray(state.images) && state.images.length > 0) {
+            images = state.images.map((img, idx) => ({
+                id: img.id || (Date.now() + idx + Math.random()),
+                b64: img.b64,
+                name: img.name || ('image_' + (idx + 1)),
+            })).filter(img => !!img.b64);
+            window.__uploadedImages = images;
+        }
+
+        if (promptInput && typeof state.prompt === 'string') {
+            promptInput.value = state.prompt;
+        }
+
+        if (loraSelect && typeof state.lora === 'string' && state.lora) {
+            const hasOption = Array.from(loraSelect.options).some(opt => opt.value === state.lora);
+            if (hasOption) loraSelect.value = state.lora;
+        }
+
+        const seedEl = document.getElementById('custom-seed');
+        const seedVal = document.getElementById('custom-seed-val');
+        if (seedEl && state.seed != null) {
+            seedEl.value = String(state.seed);
+            if (seedVal) seedVal.textContent = String(state.seed);
+        }
+
+        const stepsEl = document.getElementById('custom-steps');
+        const stepsVal = document.getElementById('custom-steps-val');
+        if (stepsEl && state.steps != null) {
+            stepsEl.value = String(state.steps);
+            if (stepsVal) stepsVal.textContent = String(state.steps);
+        }
+
+        const batchEl = document.getElementById('custom-batch');
+        const batchVal = document.getElementById('custom-batch-val');
+        if (batchEl && state.batch != null) {
+            batchEl.value = String(state.batch);
+            if (batchVal) batchVal.textContent = String(state.batch);
+        }
+
+        renderGallery();
+        syncImagesToGradio();
+        syncPromptToGradio();
+        syncLoraToGradio();
+        if (seedEl) seedEl.dispatchEvent(new Event('input', {bubbles:true}));
+        if (stepsEl) stepsEl.dispatchEvent(new Event('input', {bubbles:true}));
+        if (batchEl) batchEl.dispatchEvent(new Event('input', {bubbles:true}));
+    }
+
     function syncImagesToGradio() {
         window.__uploadedImages = images;
         const b64Array = images.map(img => img.b64);
         setGradioValue('hidden-images-b64', JSON.stringify(b64Array));
         updateCounts();
+        saveUiState();
     }
     function syncPromptToGradio() {
         if (promptInput) setGradioValue('prompt-gradio-input', promptInput.value);
+        saveUiState();
     }
     function syncLoraToGradio() {
         if (!loraSelect) return;
@@ -1216,6 +1321,7 @@ function init(attempt = 0) {
                 syncImagesToGradio();
             }
         }, 250);
+        saveUiState();
     }
 
     function updateCounts() {
@@ -1350,6 +1456,13 @@ function init(attempt = 0) {
     syncSlider('custom-steps',    'gradio-steps');
     syncSlider('custom-batch',    'gradio-batch-count');
 
+    ['custom-seed', 'custom-steps', 'custom-batch'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', saveUiState);
+        el.addEventListener('change', saveUiState);
+    });
+
     const randCheck = document.getElementById('custom-randomize');
     if (randCheck) {
         randCheck.addEventListener('change', () => {
@@ -1411,6 +1524,7 @@ function init(attempt = 0) {
 
     if (runBtnEl) runBtnEl.addEventListener('click', () => window.__clickGradioRunBtn());
 
+    restoreUiState();
     renderGallery();
     updateCounts();
 }
