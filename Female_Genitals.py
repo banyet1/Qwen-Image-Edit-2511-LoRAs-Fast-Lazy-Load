@@ -81,9 +81,9 @@ ADAPTER_SPECS = {
         "adapter_name": "CNFemale",
     },
     "CNPussy": {
-        "url": "https://ai.x39.org/lora/zl_cn_female_genitals_v1.safetensors",
+        "url": "https://ai.x39.org/lora/femalegenitals.safetensors",
         "repo": LORA_DIR,
-        "weights": "zl_cn_female_genitals_v1.safetensors",
+        "weights": "femalegenitals.safetensors",
         "adapter_name": "CNPussy",
     },
     "banyetman": {
