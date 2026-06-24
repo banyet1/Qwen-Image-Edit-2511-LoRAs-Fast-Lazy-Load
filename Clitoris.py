@@ -104,24 +104,24 @@ ADAPTER_SPECS = {
         "weights": "beer.safetensors",
         "adapter_name": "beer",
     },
-    "clitoris": {
+    "Clitoris": {
         "url": "https://ai.x39.org/lora/clitoris.safetensors",
         "repo": LORA_DIR,
-        "weights": "slictors.safetensors",
-        "adapter_name": "clitoris",
+        "weights": "clitoris.safetensors",
+        "adapter_name": "Clitoris",
     },
-    "shaved": {
+    "Shaved": {
         "url": "https://ai.x39.org/asiawomen/shaved.safetensors",
         "repo": LORA_DIR,
         "weights": "shaved.safetensors",
-        "adapter_name": "shaved",
+        "adapter_name": "Shaved",
     },
-    "CNPussy/clitoris": {
-        "combo": ["CNPussy", "clitoris"],
+    "CNPussy/Clitoris": {
+        "combo": ["CNPussy", "Clitoris"],
         "adapter_weights": [1.0, 1.0],
     },
-    "Shaved/clitoris": {
-        "combo": ["Shaved", "clitoris"],
+    "Shaved/Clitoris": {
+        "combo": ["Shaved", "Clitoris"],
         "adapter_weights": [1.0, 1.0],
     },
     "Anime-V2": {
@@ -256,8 +256,8 @@ EXAMPLES_CONFIG = [
     {"images": ["examples/ban.jpg"],                        "prompt": "replace the woman with photo of LL9_BANYET_01, middle-aged Asian man, keep the pose, clothing and background unchanged.",                                                                                           "lora": "banyetman"},
     {"images": ["examples/ban.jpg"],                        "prompt": "replace the man wearing CB_BANYETCHLBLT_01 underwear, nude,keep the pose, clothing and background unchanged.",                                                                                           "lora": "lock"},
     {"images": ["examples/asiawomen.jpg"],                        "prompt": "the woman doing LL9_BANYET_02 beer bottle insert to her vaginal, nude, keep the pose, clothing and background unchanged.",                                                                                           "lora": "beer"},    
-    {"images": ["examples/asiawomen.jpg"],                        "prompt": "zl_cn_female_genitals_v1, zl_cn_female_clitoris_v1, full nude, 躺着，腿分开, 头扭向侧面，低头，expose pussy, expose asshole, direct view.",                                                                                           "lora": "CNPussy/clitoris"},
-    {"images": ["examples/asiawomen.jpg"],                        "prompt": "zl_cn_female_shaved_genitals_v1, zl_cn_female_clitoris_v1, full nude, 躺着，腿分开, 头扭向侧面，低头，expose pussy, expose asshole, direct view.",                                                                                           "lora": "Shaved/clitoris"},
+    {"images": ["examples/asiawomen.jpg"],                        "prompt": "zl_cn_female_genitals_v1, zl_cn_female_clitoris_v1, full nude, 躺着，腿分开, 头扭向侧面，低头，expose pussy, expose asshole, direct view.",                                                                                           "lora": "CNPussy/Clitoris"},
+    {"images": ["examples/asiawomen.jpg"],                        "prompt": "zl_cn_female_shaved_genitals_v1, zl_cn_female_clitoris_v1, full nude, 躺着，腿分开, 头扭向侧面，低头，expose pussy, expose asshole, direct view.",                                                                                           "lora": "Shaved/Clitoris"},
     {"images": ["examples/HRP.jpg"],                        "prompt": "Transform into a hyper-realistic face portrait.",                                                                 "lora": "Hyper-Realistic-Portrait"},
     {"images": ["examples/A.jpeg"],                         "prompt": "Rotate the camera 45 degrees to the right.",                                                                      "lora": "Multiple-Angles"},
     {"images": ["examples/U.jpg"],                          "prompt": "Upscale this picture to 4K resolution.",                                                                          "lora": "Upscaler"},
