@@ -216,15 +216,6 @@ ADAPTER_SPECS = {
 LOADED_ADAPTERS: set = set()
 CURRENT_ACTIVE_ADAPTER = None
 ADAPTER_NAMES = [name for name in ADAPTER_SPECS.keys() if not name.startswith("_")]
-COMBO_SPECS = {
-    name: {
-        "combo": spec["combo"],
-        "adapter_weights": spec.get("adapter_weights", [1.0] * len(spec["combo"])),
-    }
-    for name, spec in ADAPTER_SPECS.items()
-    if "combo" in spec
-}
-COMBO_SPECS_JSON = json.dumps(COMBO_SPECS, ensure_ascii=False)
 
 
 def ensure_adapter_source(spec):
@@ -437,7 +428,6 @@ def infer(
     prompt,
     lora_adapter,
     resolution_preset,
-    combo_weights_json,
     seed,
     randomize_seed,
     guidance_scale,
@@ -476,20 +466,13 @@ def infer(
                 adapter_names.append(ensure_single_adapter_loaded(combo_key, combo_spec))
                 combo_labels.append(combo_key)
             adapter_weights = spec.get("adapter_weights", [1.0] * len(adapter_names))
-            if combo_weights_json and str(combo_weights_json).strip():
-                try:
-                    combo_weights = json.loads(combo_weights_json)
-                    if isinstance(combo_weights, list):
-                        adapter_weights = [
-                            float(combo_weights[i]) if i < len(combo_weights) else float(adapter_weights[i])
-                            for i in range(len(adapter_names))
-                        ]
-                except Exception:
-                    pass
-            active_signature = (tuple(adapter_names), tuple(float(w) for w in adapter_weights))
-            pipe.set_adapters(adapter_names, adapter_weights=adapter_weights)
-            CURRENT_ACTIVE_ADAPTER = active_signature
-            print(f"--- Activated combo adapter: {' + '.join(combo_labels)} with weights {adapter_weights} ---")
+            active_signature = tuple(adapter_names)
+            if CURRENT_ACTIVE_ADAPTER != active_signature:
+                pipe.set_adapters(adapter_names, adapter_weights=adapter_weights)
+                CURRENT_ACTIVE_ADAPTER = active_signature
+                print(f"--- Activated combo adapter: {' + '.join(combo_labels)} ---")
+            else:
+                print(f"--- Combo adapter {lora_adapter} already active. ---")
         else:
             adapter_name = ensure_single_adapter_loaded(lora_adapter, spec)
             if CURRENT_ACTIVE_ADAPTER != adapter_name:
@@ -506,11 +489,6 @@ def infer(
     except Exception:
         batch_count = 1
     batch_count = max(1, batch_count)
-
-    try:
-        seed = int(seed)
-    except Exception:
-        seed = 0
 
     negative_prompt = (
         "worst quality, low quality, bad anatomy, bad hands, text, error, missing fingers, "
@@ -544,7 +522,7 @@ def infer(
                 true_cfg_scale=guidance_scale,
             ).images[0]
 
-            out_name = f"qwen_edit_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}_{current_seed}.png"
+            out_name = f"qwen_edit_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{current_seed}.png"
             out_path = os.path.join(OUTPUT_DIR, out_name)
             result_image.save(out_path)
             print(f"Saved to: {out_path}")
@@ -561,7 +539,7 @@ def infer(
             yield last_preview, last_seed, last_out_path, "", progress_text
 
         if batch_count > 1 and saved_paths:
-            batch_zip_name = f"qwen_batch_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.zip"
+            batch_zip_name = f"qwen_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
             batch_zip_path = os.path.join(OUTPUT_DIR, batch_zip_name)
             with zipfile.ZipFile(batch_zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
                 for saved_path in saved_paths:
@@ -1080,47 +1058,6 @@ footer { display: none !important; }
     background:rgba(26,26,29,.5)!important; font-family:'Inter',sans-serif;
 }
 .settings-group-body { padding:14px 16px; display:flex; flex-direction:column; gap:12px; background:#141416!important; }
-.combo-weights-panel {
-    display:none;
-    margin-bottom:12px;
-    padding:12px 12px 4px;
-    border:1px solid #2a2a2e;
-    border-radius:8px;
-    background:#111113!important;
-}
-.combo-weights-panel.visible { display:block; }
-.combo-weights-title {
-    font-size:11px;
-    font-weight:700;
-    color:#555560;
-    text-transform:uppercase;
-    letter-spacing:1px;
-    margin-bottom:10px;
-    font-family:'Inter',sans-serif;
-}
-.combo-weight-row {
-    display:flex;
-    align-items:center;
-    gap:10px;
-    min-height:28px;
-    margin-bottom:10px;
-}
-.combo-weight-row label {
-    font-size:13px;
-    font-weight:600;
-    color:#9898a8;
-    min-width:92px;
-    flex-shrink:0;
-    font-family:'Inter',sans-serif;
-}
-.combo-weight-row input[type="range"] {
-    flex:1;
-    height:5px;
-    background:#333338;
-    border-radius:3px;
-    outline:none;
-    min-width:0;
-}
 .slider-row { display:flex; align-items:center; gap:10px; min-height:28px; }
 .slider-row label { font-size:13px; font-weight:600; color:#9898a8; min-width:72px; flex-shrink:0; font-family:'Inter',sans-serif; }
 .slider-row input[type="range"] {
@@ -1201,8 +1138,6 @@ function init(attempt = 0) {
     const btnClear     = document.getElementById('tb-clear');
     const promptInput  = document.getElementById('custom-prompt-input');
     const loraSelect   = document.getElementById('custom-lora-select');
-    const comboWeightsPanel = document.getElementById('combo-weights-panel');
-    const comboWeightsBody  = document.getElementById('combo-weights-body');
     const runBtnEl     = document.getElementById('custom-run-btn');
     const imgCountTb   = document.getElementById('tb-image-count');
     const imgCountSb   = document.getElementById('sb-image-count');
@@ -1213,7 +1148,6 @@ function init(attempt = 0) {
     }
     window.__qwenInitDone = true;
     const STATE_STORAGE_KEY = 'qwen_edit_ui_state_v1';
-    const comboSpecs = """ + COMBO_SPECS_JSON + r""";
 
     let images = [];
     window.__uploadedImages = images;
@@ -1353,7 +1287,6 @@ function init(attempt = 0) {
             const seedEl = document.getElementById('custom-seed');
             const stepsEl = document.getElementById('custom-steps');
             const batchEl = document.getElementById('custom-batch');
-            const comboWeights = Array.from(document.querySelectorAll('.combo-weight-slider')).map(el => el.value);
             const state = {
                 images,
                 prompt: promptInput ? promptInput.value : '',
@@ -1361,58 +1294,11 @@ function init(attempt = 0) {
                 seed: seedEl ? seedEl.value : '0',
                 steps: stepsEl ? stepsEl.value : '4',
                 batch: batchEl ? batchEl.value : '1',
-                comboWeights,
             };
             localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
         } catch (e) {
             console.warn('Failed to save UI state:', e);
         }
-    }
-
-    function syncComboWeightsToGradio() {
-        const values = Array.from(document.querySelectorAll('.combo-weight-slider')).map(el => parseFloat(el.value || '1'));
-        setGradioValue('gradio-combo-weights', values.length ? JSON.stringify(values) : '');
-        saveUiState();
-    }
-
-    function renderComboWeights(savedValues) {
-        if (!comboWeightsPanel || !comboWeightsBody || !loraSelect) return;
-        const comboSpec = comboSpecs[loraSelect.value];
-        console.log('renderComboWeights', loraSelect.value, comboSpec);
-        if (!comboSpec || !Array.isArray(comboSpec.combo) || comboSpec.combo.length === 0) {
-            comboWeightsPanel.classList.remove('visible');
-            comboWeightsBody.innerHTML = '';
-            setGradioValue('gradio-combo-weights', '');
-            return;
-        }
-
-        const defaults = Array.isArray(comboSpec.adapter_weights) ? comboSpec.adapter_weights : comboSpec.combo.map(() => 1.0);
-        const currentValues = Array.from(comboWeightsBody.querySelectorAll('.combo-weight-slider')).map(el => el.value);
-        const effectiveValues =
-            Array.isArray(savedValues) && savedValues.length
-                ? savedValues
-                : (currentValues.length === comboSpec.combo.length ? currentValues : defaults);
-        comboWeightsPanel.classList.add('visible');
-        comboWeightsBody.innerHTML = comboSpec.combo.map((name, idx) => {
-            const val = effectiveValues[idx] != null ? effectiveValues[idx] : defaults[idx];
-            return `
-                <div class="combo-weight-row">
-                    <label>${name}</label>
-                    <input type="range" class="combo-weight-slider" min="0" max="2" step="0.05" value="${val}">
-                    <span class="slider-val">${val}</span>
-                </div>
-            `;
-        }).join('');
-
-        comboWeightsBody.querySelectorAll('.combo-weight-slider').forEach(slider => {
-            slider.addEventListener('input', () => {
-                const val = slider.parentElement.querySelector('.slider-val');
-                if (val) val.textContent = slider.value;
-                syncComboWeightsToGradio();
-            });
-            slider.addEventListener('change', syncComboWeightsToGradio);
-        });
-        syncComboWeightsToGradio();
     }
 
     function restoreUiState() {
@@ -1462,7 +1348,6 @@ function init(attempt = 0) {
         syncImagesToGradio();
         syncPromptToGradio();
         syncLoraToGradio();
-        renderComboWeights(state.comboWeights);
         if (seedEl) seedEl.dispatchEvent(new Event('input', {bubbles:true}));
         if (stepsEl) stepsEl.dispatchEvent(new Event('input', {bubbles:true}));
         if (batchEl) batchEl.dispatchEvent(new Event('input', {bubbles:true}));
@@ -1501,7 +1386,6 @@ function init(attempt = 0) {
                 syncImagesToGradio();
             }
         }, 250);
-        renderComboWeights();
         saveUiState();
     }
 
@@ -1706,7 +1590,6 @@ function init(attempt = 0) {
     if (runBtnEl) runBtnEl.addEventListener('click', () => window.__clickGradioRunBtn());
 
     restoreUiState();
-    renderComboWeights();
     renderGallery();
     updateCounts();
 }
@@ -1891,10 +1774,7 @@ function watchOutputs(attempt = 0) {
         batchObserver.observe(batchPathContainer, {childList:true, subtree:true, characterData:true, attributes:true});
     }
     if (pathContainer) {
-        const pathObserver = new MutationObserver(() => {
-            syncDownloadButtons();
-            syncImage();
-        });
+        const pathObserver = new MutationObserver(syncDownloadButtons);
         pathObserver.observe(pathContainer, {childList:true, subtree:true, characterData:true, attributes:true});
     }
     if (progressContainer) {
@@ -1905,11 +1785,6 @@ function watchOutputs(attempt = 0) {
         batchSlider.addEventListener('input', syncDownloadButtons);
         batchSlider.addEventListener('change', syncDownloadButtons);
     }
-    setInterval(() => {
-        syncDownloadButtons();
-        syncTitleProgress();
-        syncImage();
-    }, 700);
     syncDownloadButtons();
     syncTitleProgress();
     syncImage();
@@ -1997,7 +1872,6 @@ with gr.Blocks() as demo:
     prompt            = gr.Textbox(value="",    elem_id="prompt-gradio-input",  elem_classes="hidden-input", container=False)
     lora_adapter      = gr.Dropdown(choices=ADAPTER_NAMES, value="XY", elem_id="gradio-lora", elem_classes="hidden-input", container=False)
     resolution_preset = gr.Textbox(value="Auto", elem_id="gradio-resolution-preset", elem_classes="hidden-input", container=False)
-    combo_weights     = gr.Textbox(value="", elem_id="gradio-combo-weights", elem_classes="hidden-input", container=False)
     seed              = gr.Slider(minimum=0, maximum=MAX_SEED, step=1, value=0, elem_id="gradio-seed",       elem_classes="hidden-input", container=False)
     randomize_seed    = gr.Checkbox(value=True, elem_id="gradio-randomize",     elem_classes="hidden-input", container=False)
     guidance_scale    = gr.Slider(minimum=1.0, maximum=10.0, step=0.1, value=1.0, elem_id="gradio-guidance", elem_classes="hidden-input", container=False)
@@ -2066,10 +1940,6 @@ with gr.Blocks() as demo:
           <div class="settings-group">
             <div class="settings-group-title">Advanced Settings</div>
             <div class="settings-group-body">
-              <div id="combo-weights-panel" class="combo-weights-panel">
-                <div class="combo-weights-title">Combo LoRA Weights</div>
-                <div id="combo-weights-body"></div>
-              </div>
               <label class="modern-label" for="custom-resolution-preset" style="margin-bottom:8px;">Resolution</label>
               <select id="custom-resolution-preset" class="lora-native-select" style="margin-bottom:14px;">
                 <option value="Auto" selected>Auto</option>
@@ -2175,9 +2045,9 @@ with gr.Blocks() as demo:
 
     run_btn.click(
         fn=infer,
-        inputs=[hidden_images_b64, prompt, lora_adapter, resolution_preset, combo_weights, seed, randomize_seed, guidance_scale, steps, batch_count],
+        inputs=[hidden_images_b64, prompt, lora_adapter, resolution_preset, seed, randomize_seed, guidance_scale, steps, batch_count],
         outputs=[result, seed, result_path, batch_zip_path, progress_status],
-        js=r"""(imgs, p, la, rp, cw, s, rs, gs, st, bc) => {
+        js=r"""(imgs, p, la, rp, s, rs, gs, st, bc) => {
             const images    = window.__uploadedImages || [];
             const b64Array  = images.map(img => img.b64);
             const imgsJson  = JSON.stringify(b64Array);
@@ -2185,13 +2055,11 @@ with gr.Blocks() as demo:
             const loraEl    = document.getElementById('custom-lora-select');
             const presetEl  = document.getElementById('custom-resolution-preset');
             const batchEl   = document.getElementById('custom-batch');
-            const comboWeightEls = Array.from(document.querySelectorAll('.combo-weight-slider'));
             const promptVal = promptEl ? promptEl.value : p;
             const loraVal   = loraEl   ? loraEl.value   : la;
             const presetVal = presetEl ? presetEl.value : rp;
-            const comboWeightsVal = comboWeightEls.length ? JSON.stringify(comboWeightEls.map(el => parseFloat(el.value || '1'))) : '';
             const batchVal  = batchEl ? parseInt(batchEl.value || '1', 10) : bc;
-            return [imgsJson, promptVal, loraVal, presetVal, comboWeightsVal, s, rs, gs, st, batchVal];
+            return [imgsJson, promptVal, loraVal, presetVal, s, rs, gs, st, batchVal];
         }""",
     )
 
